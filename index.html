@@ -55,7 +55,7 @@
         </div>
         
         <div class="p-4 text-xs text-gray-400 text-center hidden md:block">
-            PWA v2.0 • Offline Ready
+            PWA v2.1 • Import Ready
         </div>
     </nav>
 
@@ -254,6 +254,13 @@
                         <button onclick="exportData()" class="w-full text-left p-3 rounded hover:bg-gray-50 border flex justify-between items-center text-sm text-gray-700">
                             <span><i class="fa-solid fa-download mr-2"></i> Backup (JSON)</span>
                         </button>
+                        
+                        <!-- BOTÃO DE IMPORTAR -->
+                        <button onclick="document.getElementById('importFile').click()" class="w-full text-left p-3 rounded hover:bg-gray-50 border flex justify-between items-center text-sm text-gray-700">
+                            <span><i class="fa-solid fa-upload mr-2"></i> Restaurar Backup</span>
+                        </button>
+                        <input type="file" id="importFile" accept=".json" class="hidden" onchange="handleImport(event)">
+
                         <button onclick="clearAllData()" class="w-full text-left p-3 rounded hover:bg-red-50 border border-red-100 flex justify-between items-center text-sm text-red-600">
                             <span><i class="fa-solid fa-trash mr-2"></i> Resetar Tudo</span>
                         </button>
@@ -369,16 +376,14 @@
 
         // --- INIT ---
         document.addEventListener('DOMContentLoaded', () => {
-            // Solicitar armazenamento persistente
-if (navigator.storage && navigator.storage.persist) {
-  navigator.storage.persist().then(granted => {
-    if (granted) {
-      console.log("Armazenamento persistente ativado: O navegador não vai limpar seus dados automaticamente.");
-    } else {
-      console.log("Armazenamento persistente negado: Cuidado ao limpar o cache.");
-    }
-  });
-}
+            
+            // --- PERSISTÊNCIA ---
+            if (navigator.storage && navigator.storage.persist) {
+                navigator.storage.persist().then(granted => {
+                    console.log(granted ? "Persistência ativada" : "Persistência não garantida");
+                });
+            }
+
             loadData();
             
             // Default Card se não existir
@@ -395,11 +400,8 @@ if (navigator.storage && navigator.storage.persist) {
         });
 
         // --- LÓGICA DE DATAS E FATURA ---
-        
-        // Retorna a data (Mês/Ano) da PRIMEIRA parcela, considerando o dia de fechamento
         function getFirstInstallmentDate(purchaseDateStr, closingDay) {
             const pDate = new Date(purchaseDateStr);
-            // Ajuste timezone
             const purchaseDay = pDate.getUTCDate();
             const purchaseMonth = pDate.getUTCMonth();
             const purchaseYear = pDate.getUTCFullYear();
@@ -420,16 +422,14 @@ if (navigator.storage && navigator.storage.persist) {
         }
 
         function getTransactionDetailsForMonth(transaction, viewDate) {
-            // Achar cartão para saber fechamento
             const card = state.cards.find(c => c.id === transaction.cardId) || state.cards[0];
-            if (!card) return { isActive: false }; // Fallback de segurança
+            if (!card) return { isActive: false }; 
 
             const firstBill = getFirstInstallmentDate(transaction.date, card.closingDay);
             
             const vMonth = viewDate.getMonth();
             const vYear = viewDate.getFullYear();
 
-            // Diferença em meses entre a data visualizada e a data da primeira fatura
             const monthDiff = (vYear - firstBill.year) * 12 + (vMonth - firstBill.month);
 
             let isActive = false;
@@ -437,7 +437,6 @@ if (navigator.storage && navigator.storage.persist) {
             let installmentAmount = 0;
 
             if (transaction.type === 'subscription') {
-                // Assinatura começa a cobrar na primeira fatura e segue indefinidamente
                 if (monthDiff >= 0) {
                     isActive = true;
                     installmentAmount = transaction.amount;
@@ -445,7 +444,6 @@ if (navigator.storage && navigator.storage.persist) {
                 }
             } else {
                 const totalInstallments = transaction.type === 'one-time' ? 1 : transaction.installments;
-                
                 if (monthDiff >= 0 && monthDiff < totalInstallments) {
                     isActive = true;
                     currentInstallment = `${monthDiff + 1}/${totalInstallments}`;
@@ -458,33 +456,25 @@ if (navigator.storage && navigator.storage.persist) {
 
         // --- RENDER ---
         function renderAll() {
-            renderCardSelects(); // Preenche dropdowns
+            renderCardSelects();
             renderDashboard();
             renderPeopleList();
             renderConfigCards();
         }
 
         function renderCardSelects() {
-            // Filtro Global
             const globalFilter = document.getElementById('globalCardFilter');
             const currentVal = state.selectedCardFilter;
-            
             globalFilter.innerHTML = `<option value="all">Todos os Cartões</option>`;
-            state.cards.forEach(c => {
-                globalFilter.innerHTML += `<option value="${c.id}">${c.name}</option>`;
-            });
+            state.cards.forEach(c => { globalFilter.innerHTML += `<option value="${c.id}">${c.name}</option>`; });
             globalFilter.value = currentVal;
 
-            // Select do Modal
             const modalSelect = document.getElementById('modalCardSelect');
             modalSelect.innerHTML = '';
-            state.cards.forEach(c => {
-                modalSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
-            });
+            state.cards.forEach(c => { modalSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`; });
         }
 
         function renderDashboard() {
-            // 1. Filtrar transações por cartão selecionado
             const globalFilter = document.getElementById('globalCardFilter').value;
             state.selectedCardFilter = globalFilter;
 
@@ -493,7 +483,6 @@ if (navigator.storage && navigator.storage.persist) {
             let totalOthers = 0;
             let totalLimit = 0;
             
-            // Calcula limite total baseado no filtro
             if (globalFilter === 'all') {
                 totalLimit = state.cards.reduce((acc, c) => acc + parseFloat(c.limit), 0);
             } else {
@@ -507,15 +496,12 @@ if (navigator.storage && navigator.storage.persist) {
             const activeTransactions = [];
 
             state.transactions.forEach(t => {
-                // Filtro de cartão
                 if (globalFilter !== 'all' && t.cardId !== globalFilter) return;
 
                 const details = getTransactionDetailsForMonth(t, state.viewDate);
-                
                 if (details.isActive) {
                     const amount = details.installmentAmount;
                     totalInvoice += amount;
-
                     if (t.person === 'Eu') {
                         totalPersonal += amount;
                     } else {
@@ -523,29 +509,20 @@ if (navigator.storage && navigator.storage.persist) {
                         if (!debtsByPerson[t.person]) debtsByPerson[t.person] = 0;
                         debtsByPerson[t.person] += amount;
                     }
-
-                    activeTransactions.push({
-                        ...t,
-                        displayInstallment: details.currentInstallment,
-                        displayAmount: amount,
-                        cardName: details.cardName
-                    });
+                    activeTransactions.push({ ...t, displayInstallment: details.currentInstallment, displayAmount: amount, cardName: details.cardName });
                 }
             });
 
-            // Atualizar Valores
             document.getElementById('totalInvoice').textContent = formatMoney(totalInvoice);
             document.getElementById('totalPersonal').textContent = formatMoney(totalPersonal);
             document.getElementById('totalOthers').textContent = formatMoney(totalOthers);
             
-            // Barra de Limite
             document.getElementById('limitDisplay').textContent = `Limite: ${formatMoney(totalLimit)}`;
             const limitPercent = totalLimit > 0 ? Math.min((totalInvoice / totalLimit) * 100, 100) : 0;
             document.getElementById('limitBar').style.width = `${limitPercent}%`;
             document.getElementById('limitBar').className = `h-1 rounded-full ${limitPercent > 90 ? 'bg-red-500' : 'bg-indigo-500'}`;
             document.getElementById('limitPercent').textContent = `${Math.round(limitPercent)}%`;
 
-            // Lista Pessoas
             const peopleEl = document.getElementById('peopleListSummary');
             peopleEl.innerHTML = '';
             Object.entries(debtsByPerson).forEach(([name, val]) => {
@@ -559,7 +536,6 @@ if (navigator.storage && navigator.storage.persist) {
             });
             if(peopleEl.innerHTML === '') peopleEl.innerHTML = '<div class="text-gray-400 text-xs text-center py-2">Ninguém deve nada.</div>';
 
-            // Top Gastos
             activeTransactions.sort((a, b) => b.displayAmount - a.displayAmount);
             const topTable = document.getElementById('topExpensesTable');
             topTable.innerHTML = '';
@@ -578,7 +554,6 @@ if (navigator.storage && navigator.storage.persist) {
         function renderTransactionsTab(activeTransactions) {
             const table = document.getElementById('fullTransactionsTable');
             table.innerHTML = '';
-            
             const term = document.getElementById('searchInput').value.toLowerCase();
             const filtered = activeTransactions.filter(t => t.description.toLowerCase().includes(term) || t.person.toLowerCase().includes(term));
 
@@ -605,7 +580,7 @@ if (navigator.storage && navigator.storage.persist) {
             });
         }
 
-        // --- CARDS MANAGEMENT ---
+        // --- CARDS ---
         function renderConfigCards() {
             const list = document.getElementById('cardsList');
             list.innerHTML = '';
@@ -628,31 +603,20 @@ if (navigator.storage && navigator.storage.persist) {
         function handleAddCard(e) {
             e.preventDefault();
             const form = e.target;
-            const newCard = {
+            state.cards.push({
                 id: Date.now().toString(),
                 name: form.cardName.value,
                 closingDay: parseInt(form.closingDay.value),
                 dueDay: parseInt(form.dueDay.value),
                 limit: parseFloat(form.limit.value)
-            };
-            state.cards.push(newCard);
-            saveData();
-            form.reset();
-            renderAll();
+            });
+            saveData(); form.reset(); renderAll();
         }
 
         function deleteCard(id) {
             if (state.cards.length <= 1) return alert('Você precisa ter pelo menos um cartão.');
-            
-            // Verificar se há transações nesse cartão
-            const hasTrans = state.transactions.some(t => t.cardId === id);
-            if(hasTrans) return alert('Não é possível apagar cartão com transações ativas. Apague as despesas primeiro.');
-
-            if(confirm('Remover este cartão?')) {
-                state.cards = state.cards.filter(c => c.id !== id);
-                saveData();
-                renderAll();
-            }
+            if(state.transactions.some(t => t.cardId === id)) return alert('Apague as despesas deste cartão primeiro.');
+            if(confirm('Remover este cartão?')) { state.cards = state.cards.filter(c => c.id !== id); saveData(); renderAll(); }
         }
 
         // --- GENERIC ---
@@ -661,33 +625,23 @@ if (navigator.storage && navigator.storage.persist) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(`tab-${id}`).classList.remove('hidden');
             
-            document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.className = btn.className.replace('bg-indigo-600 text-white', 'text-gray-600 hover:bg-gray-50');
-            });
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.className = btn.className.replace('bg-indigo-600 text-white', 'text-gray-600 hover:bg-gray-50'));
             const active = document.querySelector(`button[onclick="switchTab('${id}')"]`);
             if(active) active.className = active.className.replace('text-gray-600 hover:bg-gray-50', 'bg-indigo-600 text-white');
             
             document.getElementById('navMenu').classList.add('hidden');
         }
 
-        document.getElementById('mobileMenuBtn').addEventListener('click', () => {
-            document.getElementById('navMenu').classList.toggle('hidden');
-        });
+        document.getElementById('mobileMenuBtn').addEventListener('click', () => { document.getElementById('navMenu').classList.toggle('hidden'); });
 
-        function changeMonth(offset) {
-            state.viewDate.setMonth(state.viewDate.getMonth() + offset);
-            updateDateDisplay();
-            renderAll();
-        }
-
+        function changeMonth(offset) { state.viewDate.setMonth(state.viewDate.getMonth() + offset); updateDateDisplay(); renderAll(); }
         function updateDateDisplay() {
             const str = state.viewDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
             document.getElementById('currentDateDisplay').textContent = str.charAt(0).toUpperCase() + str.slice(1);
         }
-
         function formatMoney(val) { return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
 
-        // People
+        // --- PEOPLE & MODAL ---
         function renderPeopleList() {
             const sel = document.getElementById('modalPersonSelect');
             sel.innerHTML = '';
@@ -707,20 +661,12 @@ if (navigator.storage && navigator.storage.persist) {
         }
         function addPerson() {
             const val = document.getElementById('newPersonName').value.trim();
-            if(val && !state.people.includes(val)) {
-                state.people.push(val);
-                saveData(); renderPeopleList();
-                document.getElementById('newPersonName').value = '';
-            }
+            if(val && !state.people.includes(val)) { state.people.push(val); saveData(); renderPeopleList(); document.getElementById('newPersonName').value = ''; }
         }
         function removePerson(name) {
-            if(confirm('Remover pessoa?')) {
-                state.people = state.people.filter(p => p !== name);
-                saveData(); renderPeopleList();
-            }
+            if(confirm('Remover pessoa?')) { state.people = state.people.filter(p => p !== name); saveData(); renderPeopleList(); }
         }
 
-        // Modal
         function openModal() { document.getElementById('transactionModal').classList.remove('hidden'); }
         function closeModal() { document.getElementById('transactionModal').classList.add('hidden'); document.getElementById('transactionForm').reset(); }
         function toggleInstallmentField() {
@@ -732,7 +678,7 @@ if (navigator.storage && navigator.storage.persist) {
         function handleTransactionSubmit(e) {
             e.preventDefault();
             const f = new FormData(e.target);
-            const t = {
+            state.transactions.push({
                 id: Date.now().toString(),
                 type: f.get('type'),
                 description: f.get('description'),
@@ -741,16 +687,14 @@ if (navigator.storage && navigator.storage.persist) {
                 date: f.get('date'),
                 cardId: f.get('cardId'),
                 person: f.get('person')
-            };
-            state.transactions.push(t);
+            });
             saveData(); closeModal(); renderAll();
         }
-
         function deleteTransaction(id) {
             if(confirm('Apagar?')) { state.transactions = state.transactions.filter(t => t.id !== id); saveData(); renderAll(); }
         }
 
-        // Storage
+        // --- STORAGE & IMPORT/EXPORT ---
         function saveData() { localStorage.setItem('gestorPWA_v2', JSON.stringify({ transactions: state.transactions, people: state.people, cards: state.cards })); }
         function loadData() {
             const d = JSON.parse(localStorage.getItem('gestorPWA_v2') || '{}');
@@ -767,7 +711,33 @@ if (navigator.storage && navigator.storage.persist) {
             a.download = "gestor_backup.json";
             a.click();
         }
+
+        function handleImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    // Validação simples
+                    if (!data.transactions || !data.cards) throw new Error('Arquivo JSON inválido ou incompleto.');
+
+                    if (confirm(`Restaurar backup com ${data.transactions.length} transações? Dados atuais serão substituídos.`)) {
+                        state.transactions = data.transactions;
+                        state.people = data.people || ['Eu'];
+                        state.cards = data.cards;
+                        saveData();
+                        renderAll();
+                        alert('Backup restaurado com sucesso!');
+                    }
+                } catch (err) {
+                    alert('Erro ao importar: ' + err.message);
+                }
+                event.target.value = ''; // Limpar input
+            };
+            reader.readAsText(file);
+        }
     </script>
 </body>
-
 </html>
