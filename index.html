@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GestorFatura</title>
+    <title>GestorFatura IDB</title>
     
     <!-- PWA Settings -->
     <link rel="manifest" href="manifest.json">
@@ -24,9 +24,17 @@
         body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; user-select: none; -webkit-tap-highlight-color: transparent; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        /* Loading overlay */
+        #loadingOverlay { transition: opacity 0.3s; }
     </style>
 </head>
 <body class="text-slate-800 h-screen flex flex-col md:flex-row overflow-hidden bg-gray-50">
+
+    <!-- Loading Screen -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-white z-[60] flex flex-col items-center justify-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+        <p class="text-gray-500 text-sm font-medium">Carregando Banco de Dados...</p>
+    </div>
 
     <!-- Sidebar / Navegação Mobile -->
     <nav class="bg-white md:w-64 md:h-full border-r border-gray-200 flex-shrink-0 flex md:flex-col justify-between z-20 shadow-sm md:shadow-none">
@@ -55,7 +63,7 @@
         </div>
         
         <div class="p-4 text-xs text-gray-400 text-center hidden md:block">
-            PWA v2.1 • Import Ready
+            v3.0 • IndexedDB
         </div>
     </nav>
 
@@ -64,16 +72,12 @@
         
         <!-- Header Superior -->
         <header class="bg-white border-b border-gray-200 sticky top-0 z-10 px-4 py-3 md:px-6 md:py-4 flex flex-col md:flex-row justify-between items-center gap-3 shadow-sm">
-            
-            <!-- Seletor de Cartão -->
             <div class="w-full md:w-auto">
                 <select id="globalCardFilter" onchange="renderAll()" class="w-full md:w-48 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2">
                     <option value="all">Todos os Cartões</option>
-                    <!-- JS preenche cartões aqui -->
                 </select>
             </div>
 
-            <!-- Seletor de Data -->
             <div class="flex items-center bg-gray-100 rounded-lg p-1 shadow-inner">
                 <button onclick="changeMonth(-1)" class="p-2 hover:bg-white rounded-md text-gray-600 hover:text-indigo-600 transition shadow-sm hover:shadow">
                     <i class="fa-solid fa-chevron-left"></i>
@@ -96,7 +100,6 @@
 
             <!-- ABA DASHBOARD -->
             <div id="tab-dashboard" class="tab-content space-y-6">
-                <!-- Cards Resumo -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                     <!-- Fatura Total -->
                     <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 relative overflow-hidden">
@@ -137,20 +140,15 @@
                     </div>
                 </div>
 
-                <!-- Detalhamento -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <!-- Lista de Devedores -->
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 lg:col-span-1">
                         <h4 class="font-semibold text-gray-700 mb-4 flex items-center justify-between">
                             <span>Divisão por Pessoa</span>
                             <i class="fa-solid fa-users text-gray-400"></i>
                         </h4>
-                        <div id="peopleListSummary" class="space-y-3 max-h-60 overflow-y-auto no-scrollbar">
-                            <!-- JS -->
-                        </div>
+                        <div id="peopleListSummary" class="space-y-3 max-h-60 overflow-y-auto no-scrollbar"></div>
                     </div>
 
-                    <!-- Top Gastos -->
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 lg:col-span-2">
                         <h4 class="font-semibold text-gray-700 mb-4 flex items-center justify-between">
                             <span>Maiores Gastos</span>
@@ -209,15 +207,12 @@
                 </div>
             </div>
 
-            <!-- ABA CONFIG (Cartões e Dados) -->
+            <!-- ABA CONFIG -->
             <div id="tab-config" class="tab-content hidden space-y-6">
-                
-                <!-- Gerenciar Cartões -->
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 max-w-2xl mx-auto">
                     <h3 class="font-bold text-lg text-gray-700 mb-4 flex items-center gap-2">
                         <i class="fa-solid fa-credit-card text-indigo-500"></i> Meus Cartões
                     </h3>
-                    
                     <form onsubmit="handleAddCard(event)" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
                         <div class="col-span-2 md:col-span-4">
                             <label class="text-xs font-semibold text-gray-500">Nome do Cartão</label>
@@ -241,21 +236,15 @@
                             </div>
                         </div>
                     </form>
-
-                    <div id="cardsList" class="space-y-3">
-                        <!-- JS renders cards here -->
-                    </div>
+                    <div id="cardsList" class="space-y-3"></div>
                 </div>
 
-                <!-- Dados do App -->
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 max-w-2xl mx-auto">
-                    <h3 class="font-bold text-lg text-gray-700 mb-4">Dados</h3>
+                    <h3 class="font-bold text-lg text-gray-700 mb-4">Dados (IndexedDB)</h3>
                     <div class="space-y-3">
                         <button onclick="exportData()" class="w-full text-left p-3 rounded hover:bg-gray-50 border flex justify-between items-center text-sm text-gray-700">
                             <span><i class="fa-solid fa-download mr-2"></i> Backup (JSON)</span>
                         </button>
-                        
-                        <!-- BOTÃO DE IMPORTAR -->
                         <button onclick="document.getElementById('importFile').click()" class="w-full text-left p-3 rounded hover:bg-gray-50 border flex justify-between items-center text-sm text-gray-700">
                             <span><i class="fa-solid fa-upload mr-2"></i> Restaurar Backup</span>
                         </button>
@@ -267,16 +256,15 @@
                     </div>
                 </div>
             </div>
-
         </div>
     </main>
 
-    <!-- FAB Mobile -->
+    <!-- FAB -->
     <button onclick="openModal()" class="md:hidden fixed bottom-20 right-6 bg-indigo-600 text-white w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-2xl z-40 hover:scale-105 transition-transform">
         <i class="fa-solid fa-plus"></i>
     </button>
 
-    <!-- MODAL: NOVA TRANSAÇÃO -->
+    <!-- MODAL -->
     <div id="transactionModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center backdrop-blur-sm p-4">
         <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-[fadeIn_0.2s_ease-out]">
             <div class="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
@@ -285,8 +273,6 @@
             </div>
             
             <form id="transactionForm" onsubmit="handleTransactionSubmit(event)" class="p-6 space-y-4">
-                
-                <!-- Tipo -->
                 <div class="grid grid-cols-2 gap-2 bg-gray-100 p-1 rounded-lg">
                     <label class="cursor-pointer text-center">
                         <input type="radio" name="type" value="one-time" class="peer hidden" checked onchange="toggleInstallmentField()">
@@ -304,13 +290,11 @@
                     </label>
                 </div>
 
-                <!-- Descrição -->
                 <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1">Descrição</label>
                     <input type="text" name="description" required placeholder="O que você comprou?" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
                 </div>
 
-                <!-- Valor e Parcelas -->
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-medium text-gray-700 mb-1">Valor (R$)</label>
@@ -322,7 +306,6 @@
                     </div>
                 </div>
 
-                <!-- Data e Cartão -->
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-medium text-gray-700 mb-1">Data</label>
@@ -331,16 +314,13 @@
                     <div>
                         <label class="block text-xs font-medium text-gray-700 mb-1">Cartão</label>
                         <select name="cardId" id="modalCardSelect" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-indigo-500">
-                            <!-- JS -->
                         </select>
                     </div>
                 </div>
 
-                <!-- Quem Comprou -->
                 <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1">Responsável (Quem paga?)</label>
                     <select id="modalPersonSelect" name="person" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-indigo-500">
-                        <!-- JS -->
                     </select>
                 </div>
 
@@ -353,83 +333,282 @@
         </div>
     </div>
 
-    <!-- SCRIPT PRINCIPAL -->
+    <!-- JAVASCRIPT & INDEXEDDB LOGIC -->
     <script>
-        // --- SERVICE WORKER REGISTRATION ---
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('PWA Service Worker registrado'))
-                    .catch(err => console.log('Falha no SW:', err));
+        // --- 1. INDEXEDDB HELPER ---
+        const DB_NAME = 'GestorFaturaDB';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'app_state';
+
+        // Abre a conexão com o banco
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    // Cria uma "tabela" chamada app_state se não existir
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME);
+                    }
+                };
+
+                request.onsuccess = (event) => resolve(event.target.result);
+                request.onerror = (event) => reject('Erro ao abrir DB: ' + event.target.error);
             });
         }
 
-        // --- ESTADO ---
+        // Salva o estado completo (Substitui o localStorage.setItem)
+        async function saveStateToDB(stateObj) {
+            try {
+                const db = await openDB();
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction(STORE_NAME, 'readwrite');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.put(stateObj, 'full_backup'); // Chave fixa 'full_backup'
+
+                    request.onsuccess = () => resolve(true);
+                    request.onerror = () => reject('Erro ao salvar no DB');
+                });
+            } catch (err) {
+                console.error(err);
+                alert("Erro crítico ao salvar dados. Verifique o console.");
+            }
+        }
+
+        // Carrega o estado completo (Substitui o localStorage.getItem)
+        async function loadStateFromDB() {
+            try {
+                const db = await openDB();
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction(STORE_NAME, 'readonly');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.get('full_backup');
+
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject('Erro ao ler do DB');
+                });
+            } catch (err) {
+                console.error(err);
+                return null;
+            }
+        }
+
+        // Limpa o banco
+        async function clearDB() {
+            const db = await openDB();
+            return new Promise((resolve) => {
+                const transaction = db.transaction(STORE_NAME, 'readwrite');
+                transaction.objectStore(STORE_NAME).clear();
+                transaction.oncomplete = () => resolve();
+            });
+        }
+
+        // --- 2. SERVICE WORKER ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('SW Registered'))
+                    .catch(err => console.log('SW Fail:', err));
+            });
+        }
+
+        // --- 3. APP STATE ---
         let state = {
             transactions: [],
             people: ['Eu'],
-            cards: [], // { id, name, closingDay, dueDay, limit }
+            cards: [],
             viewDate: new Date(),
             currentTab: 'dashboard',
-            selectedCardFilter: 'all' // 'all' or cardId
+            selectedCardFilter: 'all'
         };
 
-        // --- INIT ---
-        document.addEventListener('DOMContentLoaded', () => {
+        // --- 4. INIT & MIGRATION ---
+        document.addEventListener('DOMContentLoaded', async () => {
             
-            // --- PERSISTÊNCIA ---
+            // Persistência
             if (navigator.storage && navigator.storage.persist) {
-                navigator.storage.persist().then(granted => {
-                    console.log(granted ? "Persistência ativada" : "Persistência não garantida");
-                });
+                navigator.storage.persist().then(g => console.log("Persistência: " + g));
             }
 
-            loadData();
-            
-            // Default Card se não existir
-            if (state.cards.length === 0) {
-                state.cards.push({ id: 'default', name: 'Meu Cartão', closingDay: 1, dueDay: 10, limit: 1000 });
-                saveData();
+            // Tentar carregar do IndexedDB primeiro
+            const dbData = await loadStateFromDB();
+
+            if (dbData) {
+                // Se tem dados no banco, usa eles
+                loadStateIntoMemory(dbData);
+            } else {
+                // Se o banco está vazio, verifica se tem coisa no LocalStorage (Migração)
+                const localData = localStorage.getItem('gestorPWA_v2');
+                if (localData) {
+                    console.log("Migrando dados do LocalStorage para IndexedDB...");
+                    const parsed = JSON.parse(localData);
+                    loadStateIntoMemory(parsed);
+                    await saveStateToDB(parsed); // Salva no banco novo
+                    // localStorage.removeItem('gestorPWA_v2'); // Opcional: limpar o antigo
+                } else {
+                    // Instalação Limpa
+                    ensureDefaultCard();
+                    await saveStateToDB(state); // Salva estado inicial
+                }
             }
 
-            // Set inputs
+            // Set Inputs
             document.querySelector('input[name="date"]').value = new Date().toISOString().split('T')[0];
-
+            
+            // Remove Loading e Renderiza
+            document.getElementById('loadingOverlay').style.opacity = '0';
+            setTimeout(() => document.getElementById('loadingOverlay').remove(), 300);
+            
             updateDateDisplay();
             renderAll();
         });
 
-        // --- LÓGICA DE DATAS E FATURA ---
+        function loadStateIntoMemory(data) {
+            state.transactions = data.transactions || [];
+            state.people = data.people || ['Eu'];
+            state.cards = data.cards || [];
+            ensureDefaultCard();
+        }
+
+        function ensureDefaultCard() {
+            if (state.cards.length === 0) {
+                state.cards.push({ id: 'default', name: 'Meu Cartão', closingDay: 1, dueDay: 10, limit: 1000 });
+            }
+        }
+
+        // --- 5. LOGIC (Agora chamando as funções Async do DB) ---
+
+        // Wrapper para salvar: Atualiza memória E Banco
+        async function saveData() {
+            // Criamos um objeto limpo para salvar (sem a viewDate que é temporária)
+            const dataToSave = {
+                transactions: state.transactions,
+                people: state.people,
+                cards: state.cards
+            };
+            await saveStateToDB(dataToSave);
+        }
+
+        async function handleTransactionSubmit(e) {
+            e.preventDefault();
+            const f = new FormData(e.target);
+            state.transactions.push({
+                id: Date.now().toString(),
+                type: f.get('type'),
+                description: f.get('description'),
+                amount: parseFloat(f.get('amount')),
+                installments: f.get('type') === 'installment' ? parseInt(f.get('installments')) : 1,
+                date: f.get('date'),
+                cardId: f.get('cardId'),
+                person: f.get('person')
+            });
+            
+            await saveData(); // Async save
+            closeModal(); 
+            renderAll();
+        }
+
+        async function deleteTransaction(id) {
+            if(confirm('Apagar?')) { 
+                state.transactions = state.transactions.filter(t => t.id !== id); 
+                await saveData(); 
+                renderAll(); 
+            }
+        }
+
+        async function handleAddCard(e) {
+            e.preventDefault();
+            const form = e.target;
+            state.cards.push({
+                id: Date.now().toString(),
+                name: form.cardName.value,
+                closingDay: parseInt(form.closingDay.value),
+                dueDay: parseInt(form.dueDay.value),
+                limit: parseFloat(form.limit.value)
+            });
+            await saveData(); 
+            form.reset(); 
+            renderAll();
+        }
+
+        async function deleteCard(id) {
+            if (state.cards.length <= 1) return alert('Mínimo 1 cartão.');
+            if(state.transactions.some(t => t.cardId === id)) return alert('Apague as despesas deste cartão primeiro.');
+            if(confirm('Remover cartão?')) { 
+                state.cards = state.cards.filter(c => c.id !== id); 
+                await saveData(); 
+                renderAll(); 
+            }
+        }
+
+        async function addPerson() {
+            const val = document.getElementById('newPersonName').value.trim();
+            if(val && !state.people.includes(val)) { 
+                state.people.push(val); 
+                await saveData(); 
+                renderPeopleList(); 
+                document.getElementById('newPersonName').value = ''; 
+            }
+        }
+
+        async function removePerson(name) {
+            if(confirm('Remover pessoa?')) { 
+                state.people = state.people.filter(p => p !== name); 
+                await saveData(); 
+                renderPeopleList(); 
+            }
+        }
+
+        async function clearAllData() {
+            if(confirm('Isso apagará tudo.')) { 
+                await clearDB(); 
+                location.reload(); 
+            }
+        }
+
+        async function handleImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (!data.transactions || !data.cards) throw new Error('JSON inválido.');
+                    if (confirm(`Restaurar backup?`)) {
+                        loadStateIntoMemory(data);
+                        await saveData();
+                        renderAll();
+                        alert('Sucesso!');
+                    }
+                } catch (err) { alert('Erro: ' + err.message); }
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        // --- 6. RENDER & CALCULATIONS (Mesma lógica, síncrona pois usa memória) ---
+        
         function getFirstInstallmentDate(purchaseDateStr, closingDay) {
             const pDate = new Date(purchaseDateStr);
             const purchaseDay = pDate.getUTCDate();
-            const purchaseMonth = pDate.getUTCMonth();
-            const purchaseYear = pDate.getUTCFullYear();
+            let targetMonth = pDate.getUTCMonth();
+            let targetYear = pDate.getUTCFullYear();
 
-            let targetMonth = purchaseMonth;
-            let targetYear = purchaseYear;
-
-            // Se comprou no dia do fechamento ou depois, fatura só no próximo mês
             if (purchaseDay >= parseInt(closingDay)) {
                 targetMonth++;
-                if (targetMonth > 11) {
-                    targetMonth = 0;
-                    targetYear++;
-                }
+                if (targetMonth > 11) { targetMonth = 0; targetYear++; }
             }
-
             return { month: targetMonth, year: targetYear };
         }
 
         function getTransactionDetailsForMonth(transaction, viewDate) {
             const card = state.cards.find(c => c.id === transaction.cardId) || state.cards[0];
-            if (!card) return { isActive: false }; 
+            if (!card) return { isActive: false };
 
             const firstBill = getFirstInstallmentDate(transaction.date, card.closingDay);
-            
             const vMonth = viewDate.getMonth();
             const vYear = viewDate.getFullYear();
-
             const monthDiff = (vYear - firstBill.year) * 12 + (vMonth - firstBill.month);
 
             let isActive = false;
@@ -443,18 +622,16 @@
                     currentInstallment = 'Assinatura';
                 }
             } else {
-                const totalInstallments = transaction.type === 'one-time' ? 1 : transaction.installments;
-                if (monthDiff >= 0 && monthDiff < totalInstallments) {
+                const total = transaction.type === 'one-time' ? 1 : transaction.installments;
+                if (monthDiff >= 0 && monthDiff < total) {
                     isActive = true;
-                    currentInstallment = `${monthDiff + 1}/${totalInstallments}`;
-                    installmentAmount = transaction.amount / totalInstallments;
+                    currentInstallment = `${monthDiff + 1}/${total}`;
+                    installmentAmount = transaction.amount / total;
                 }
             }
-
             return { isActive, currentInstallment, installmentAmount, cardName: card.name };
         }
 
-        // --- RENDER ---
         function renderAll() {
             renderCardSelects();
             renderDashboard();
@@ -468,7 +645,6 @@
             globalFilter.innerHTML = `<option value="all">Todos os Cartões</option>`;
             state.cards.forEach(c => { globalFilter.innerHTML += `<option value="${c.id}">${c.name}</option>`; });
             globalFilter.value = currentVal;
-
             const modalSelect = document.getElementById('modalCardSelect');
             modalSelect.innerHTML = '';
             state.cards.forEach(c => { modalSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`; });
@@ -477,38 +653,23 @@
         function renderDashboard() {
             const globalFilter = document.getElementById('globalCardFilter').value;
             state.selectedCardFilter = globalFilter;
-
-            let totalInvoice = 0;
-            let totalPersonal = 0;
-            let totalOthers = 0;
-            let totalLimit = 0;
+            let totalInvoice = 0, totalPersonal = 0, totalOthers = 0, totalLimit = 0;
             
-            if (globalFilter === 'all') {
-                totalLimit = state.cards.reduce((acc, c) => acc + parseFloat(c.limit), 0);
-            } else {
-                const c = state.cards.find(x => x.id === globalFilter);
-                totalLimit = c ? parseFloat(c.limit) : 0;
-            }
+            if (globalFilter === 'all') totalLimit = state.cards.reduce((acc, c) => acc + parseFloat(c.limit), 0);
+            else { const c = state.cards.find(x => x.id === globalFilter); totalLimit = c ? parseFloat(c.limit) : 0; }
 
             const debtsByPerson = {};
             state.people.forEach(p => { if(p !== 'Eu') debtsByPerson[p] = 0; });
-
             const activeTransactions = [];
 
             state.transactions.forEach(t => {
                 if (globalFilter !== 'all' && t.cardId !== globalFilter) return;
-
                 const details = getTransactionDetailsForMonth(t, state.viewDate);
                 if (details.isActive) {
                     const amount = details.installmentAmount;
                     totalInvoice += amount;
-                    if (t.person === 'Eu') {
-                        totalPersonal += amount;
-                    } else {
-                        totalOthers += amount;
-                        if (!debtsByPerson[t.person]) debtsByPerson[t.person] = 0;
-                        debtsByPerson[t.person] += amount;
-                    }
+                    if (t.person === 'Eu') totalPersonal += amount;
+                    else { totalOthers += amount; if (!debtsByPerson[t.person]) debtsByPerson[t.person] = 0; debtsByPerson[t.person] += amount; }
                     activeTransactions.push({ ...t, displayInstallment: details.currentInstallment, displayAmount: amount, cardName: details.cardName });
                 }
             });
@@ -516,7 +677,6 @@
             document.getElementById('totalInvoice').textContent = formatMoney(totalInvoice);
             document.getElementById('totalPersonal').textContent = formatMoney(totalPersonal);
             document.getElementById('totalOthers').textContent = formatMoney(totalOthers);
-            
             document.getElementById('limitDisplay').textContent = `Limite: ${formatMoney(totalLimit)}`;
             const limitPercent = totalLimit > 0 ? Math.min((totalInvoice / totalLimit) * 100, 100) : 0;
             document.getElementById('limitBar').style.width = `${limitPercent}%`;
@@ -526,13 +686,7 @@
             const peopleEl = document.getElementById('peopleListSummary');
             peopleEl.innerHTML = '';
             Object.entries(debtsByPerson).forEach(([name, val]) => {
-                if(val > 0) {
-                    peopleEl.innerHTML += `
-                        <div class="flex justify-between items-center bg-gray-50 p-3 rounded border border-gray-100 text-sm">
-                            <span class="font-medium text-gray-700">${name}</span>
-                            <span class="font-bold text-orange-600">${formatMoney(val)}</span>
-                        </div>`;
-                }
+                if(val > 0) peopleEl.innerHTML += `<div class="flex justify-between items-center bg-gray-50 p-3 rounded border border-gray-100 text-sm"><span class="font-medium text-gray-700">${name}</span><span class="font-bold text-orange-600">${formatMoney(val)}</span></div>`;
             });
             if(peopleEl.innerHTML === '') peopleEl.innerHTML = '<div class="text-gray-400 text-xs text-center py-2">Ninguém deve nada.</div>';
 
@@ -540,14 +694,8 @@
             const topTable = document.getElementById('topExpensesTable');
             topTable.innerHTML = '';
             activeTransactions.slice(0, 5).forEach(t => {
-                topTable.innerHTML += `
-                    <tr class="bg-white border-b">
-                        <td class="px-4 py-2 font-medium truncate max-w-[120px]">${t.description}</td>
-                        <td class="px-4 py-2 text-xs text-gray-500">${t.cardName}</td>
-                        <td class="px-4 py-2 text-right font-bold text-gray-700">${formatMoney(t.displayAmount)}</td>
-                    </tr>`;
+                topTable.innerHTML += `<tr class="bg-white border-b"><td class="px-4 py-2 font-medium truncate max-w-[120px]">${t.description}</td><td class="px-4 py-2 text-xs text-gray-500">${t.cardName}</td><td class="px-4 py-2 text-right font-bold text-gray-700">${formatMoney(t.displayAmount)}</td></tr>`;
             });
-
             renderTransactionsTab(activeTransactions);
         }
 
@@ -556,188 +704,41 @@
             table.innerHTML = '';
             const term = document.getElementById('searchInput').value.toLowerCase();
             const filtered = activeTransactions.filter(t => t.description.toLowerCase().includes(term) || t.person.toLowerCase().includes(term));
-
-            if(filtered.length === 0) {
-                table.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-gray-400">Nada aqui.</td></tr>';
-                return;
-            }
-
+            if(filtered.length === 0) { table.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-gray-400">Nada aqui.</td></tr>'; return; }
             filtered.forEach(t => {
                 const day = new Date(t.date).getUTCDate().toString().padStart(2, '0');
-                table.innerHTML += `
-                    <tr class="bg-white hover:bg-gray-50 transition">
-                        <td class="px-3 py-3 text-gray-500">${day}</td>
-                        <td class="px-3 py-3 font-medium">
-                            <div class="text-gray-900">${t.description}</div>
-                            <div class="text-xs text-gray-400">${t.cardName}</div>
-                        </td>
-                        <td class="px-3 py-3"><span class="px-2 py-0.5 rounded text-xs ${t.person==='Eu'?'bg-emerald-100 text-emerald-800':'bg-orange-100 text-orange-800'}">${t.person}</span></td>
-                        <td class="px-3 py-3 text-center text-xs text-gray-500">${t.displayInstallment}</td>
-                        <td class="px-3 py-3 text-right font-bold text-gray-700">${formatMoney(t.displayAmount)}</td>
-                        <td class="px-3 py-3 text-center"><button onclick="deleteTransaction('${t.id}')" class="text-red-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button></td>
-                    </tr>
-                `;
+                table.innerHTML += `<tr class="bg-white hover:bg-gray-50 transition"><td class="px-3 py-3 text-gray-500">${day}</td><td class="px-3 py-3 font-medium"><div class="text-gray-900">${t.description}</div><div class="text-xs text-gray-400">${t.cardName}</div></td><td class="px-3 py-3"><span class="px-2 py-0.5 rounded text-xs ${t.person==='Eu'?'bg-emerald-100 text-emerald-800':'bg-orange-100 text-orange-800'}">${t.person}</span></td><td class="px-3 py-3 text-center text-xs text-gray-500">${t.displayInstallment}</td><td class="px-3 py-3 text-right font-bold text-gray-700">${formatMoney(t.displayAmount)}</td><td class="px-3 py-3 text-center"><button onclick="deleteTransaction('${t.id}')" class="text-red-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button></td></tr>`;
             });
         }
 
-        // --- CARDS ---
+        // --- CARDS & PEOPLE RENDER ---
         function renderConfigCards() {
             const list = document.getElementById('cardsList');
             list.innerHTML = '';
             state.cards.forEach(c => {
-                list.innerHTML += `
-                    <div class="flex justify-between items-center bg-gray-50 p-3 rounded border border-gray-200">
-                        <div>
-                            <div class="font-bold text-gray-800 text-sm">${c.name}</div>
-                            <div class="text-xs text-gray-500">Fecha dia ${c.closingDay} • Vence dia ${c.dueDay}</div>
-                            <div class="text-xs text-indigo-600 font-mono mt-1">Limite: ${formatMoney(parseFloat(c.limit))}</div>
-                        </div>
-                        <button onclick="deleteCard('${c.id}')" class="text-red-400 hover:text-red-600 p-2" ${state.cards.length === 1 ? 'disabled style="opacity:0.3"' : ''}>
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
-                    </div>
-                `;
+                list.innerHTML += `<div class="flex justify-between items-center bg-gray-50 p-3 rounded border border-gray-200"><div><div class="font-bold text-gray-800 text-sm">${c.name}</div><div class="text-xs text-gray-500">Fecha dia ${c.closingDay} • Vence dia ${c.dueDay}</div><div class="text-xs text-indigo-600 font-mono mt-1">Limite: ${formatMoney(parseFloat(c.limit))}</div></div><button onclick="deleteCard('${c.id}')" class="text-red-400 hover:text-red-600 p-2" ${state.cards.length === 1 ? 'disabled style="opacity:0.3"' : ''}><i class="fa-solid fa-trash"></i></button></div>`;
             });
         }
-
-        function handleAddCard(e) {
-            e.preventDefault();
-            const form = e.target;
-            state.cards.push({
-                id: Date.now().toString(),
-                name: form.cardName.value,
-                closingDay: parseInt(form.closingDay.value),
-                dueDay: parseInt(form.dueDay.value),
-                limit: parseFloat(form.limit.value)
-            });
-            saveData(); form.reset(); renderAll();
-        }
-
-        function deleteCard(id) {
-            if (state.cards.length <= 1) return alert('Você precisa ter pelo menos um cartão.');
-            if(state.transactions.some(t => t.cardId === id)) return alert('Apague as despesas deste cartão primeiro.');
-            if(confirm('Remover este cartão?')) { state.cards = state.cards.filter(c => c.id !== id); saveData(); renderAll(); }
-        }
-
-        // --- GENERIC ---
-        function switchTab(id) {
-            state.currentTab = id;
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`tab-${id}`).classList.remove('hidden');
-            
-            document.querySelectorAll('.nav-btn').forEach(btn => btn.className = btn.className.replace('bg-indigo-600 text-white', 'text-gray-600 hover:bg-gray-50'));
-            const active = document.querySelector(`button[onclick="switchTab('${id}')"]`);
-            if(active) active.className = active.className.replace('text-gray-600 hover:bg-gray-50', 'bg-indigo-600 text-white');
-            
-            document.getElementById('navMenu').classList.add('hidden');
-        }
-
-        document.getElementById('mobileMenuBtn').addEventListener('click', () => { document.getElementById('navMenu').classList.toggle('hidden'); });
-
-        function changeMonth(offset) { state.viewDate.setMonth(state.viewDate.getMonth() + offset); updateDateDisplay(); renderAll(); }
-        function updateDateDisplay() {
-            const str = state.viewDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-            document.getElementById('currentDateDisplay').textContent = str.charAt(0).toUpperCase() + str.slice(1);
-        }
-        function formatMoney(val) { return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
-
-        // --- PEOPLE & MODAL ---
         function renderPeopleList() {
             const sel = document.getElementById('modalPersonSelect');
             sel.innerHTML = '';
             state.people.forEach(p => sel.innerHTML += `<option value="${p}">${p}</option>`);
-
             const list = document.getElementById('peopleListManage');
             list.innerHTML = '';
-            state.people.forEach(p => {
-                if(p !== 'Eu') {
-                    list.innerHTML += `
-                        <li class="flex justify-between p-3 hover:bg-gray-50 border-b text-sm">
-                            <span>${p}</span>
-                            <button onclick="removePerson('${p}')" class="text-red-500"><i class="fa-solid fa-trash"></i></button>
-                        </li>`;
-                }
-            });
-        }
-        function addPerson() {
-            const val = document.getElementById('newPersonName').value.trim();
-            if(val && !state.people.includes(val)) { state.people.push(val); saveData(); renderPeopleList(); document.getElementById('newPersonName').value = ''; }
-        }
-        function removePerson(name) {
-            if(confirm('Remover pessoa?')) { state.people = state.people.filter(p => p !== name); saveData(); renderPeopleList(); }
+            state.people.forEach(p => { if(p !== 'Eu') list.innerHTML += `<li class="flex justify-between p-3 hover:bg-gray-50 border-b text-sm"><span>${p}</span><button onclick="removePerson('${p}')" class="text-red-500"><i class="fa-solid fa-trash"></i></button></li>`; });
         }
 
+        // --- UTILS ---
+        function switchTab(id) { state.currentTab = id; document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden')); document.getElementById(`tab-${id}`).classList.remove('hidden'); document.querySelectorAll('.nav-btn').forEach(btn => btn.className = btn.className.replace('bg-indigo-600 text-white', 'text-gray-600 hover:bg-gray-50')); const active = document.querySelector(`button[onclick="switchTab('${id}')"]`); if(active) active.className = active.className.replace('text-gray-600 hover:bg-gray-50', 'bg-indigo-600 text-white'); document.getElementById('navMenu').classList.add('hidden'); }
+        document.getElementById('mobileMenuBtn').addEventListener('click', () => { document.getElementById('navMenu').classList.toggle('hidden'); });
+        document.getElementById('searchInput').addEventListener('input', () => renderDashboard());
+        function changeMonth(offset) { state.viewDate.setMonth(state.viewDate.getMonth() + offset); updateDateDisplay(); renderAll(); }
+        function updateDateDisplay() { const str = state.viewDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }); document.getElementById('currentDateDisplay').textContent = str.charAt(0).toUpperCase() + str.slice(1); }
+        function formatMoney(val) { return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
         function openModal() { document.getElementById('transactionModal').classList.remove('hidden'); }
         function closeModal() { document.getElementById('transactionModal').classList.add('hidden'); document.getElementById('transactionForm').reset(); }
-        function toggleInstallmentField() {
-            const type = document.querySelector('input[name="type"]:checked').value;
-            const field = document.getElementById('installmentField');
-            type === 'installment' ? field.classList.remove('hidden') : field.classList.add('hidden');
-        }
-
-        function handleTransactionSubmit(e) {
-            e.preventDefault();
-            const f = new FormData(e.target);
-            state.transactions.push({
-                id: Date.now().toString(),
-                type: f.get('type'),
-                description: f.get('description'),
-                amount: parseFloat(f.get('amount')),
-                installments: f.get('type') === 'installment' ? parseInt(f.get('installments')) : 1,
-                date: f.get('date'),
-                cardId: f.get('cardId'),
-                person: f.get('person')
-            });
-            saveData(); closeModal(); renderAll();
-        }
-        function deleteTransaction(id) {
-            if(confirm('Apagar?')) { state.transactions = state.transactions.filter(t => t.id !== id); saveData(); renderAll(); }
-        }
-
-        // --- STORAGE & IMPORT/EXPORT ---
-        function saveData() { localStorage.setItem('gestorPWA_v2', JSON.stringify({ transactions: state.transactions, people: state.people, cards: state.cards })); }
-        function loadData() {
-            const d = JSON.parse(localStorage.getItem('gestorPWA_v2') || '{}');
-            state.transactions = d.transactions || [];
-            state.people = d.people || ['Eu'];
-            state.cards = d.cards || [];
-        }
-        function clearAllData() {
-            if(confirm('Isso apagará tudo.')) { localStorage.removeItem('gestorPWA_v2'); location.reload(); }
-        }
-        function exportData() {
-            const a = document.createElement('a');
-            a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
-            a.download = "gestor_backup.json";
-            a.click();
-        }
-
-        function handleImport(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    // Validação simples
-                    if (!data.transactions || !data.cards) throw new Error('Arquivo JSON inválido ou incompleto.');
-
-                    if (confirm(`Restaurar backup com ${data.transactions.length} transações? Dados atuais serão substituídos.`)) {
-                        state.transactions = data.transactions;
-                        state.people = data.people || ['Eu'];
-                        state.cards = data.cards;
-                        saveData();
-                        renderAll();
-                        alert('Backup restaurado com sucesso!');
-                    }
-                } catch (err) {
-                    alert('Erro ao importar: ' + err.message);
-                }
-                event.target.value = ''; // Limpar input
-            };
-            reader.readAsText(file);
-        }
+        function toggleInstallmentField() { const type = document.querySelector('input[name="type"]:checked').value; const field = document.getElementById('installmentField'); type === 'installment' ? field.classList.remove('hidden') : field.classList.add('hidden'); }
+        function exportData() { const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({transactions:state.transactions, people:state.people, cards:state.cards})); a.download = "gestor_idb_backup.json"; a.click(); }
     </script>
 </body>
 </html>
