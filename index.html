@@ -369,6 +369,16 @@
 
         // --- INIT ---
         document.addEventListener('DOMContentLoaded', () => {
+            // Solicitar armazenamento persistente
+if (navigator.storage && navigator.storage.persist) {
+  navigator.storage.persist().then(granted => {
+    if (granted) {
+      console.log("Armazenamento persistente ativado: O navegador não vai limpar seus dados automaticamente.");
+    } else {
+      console.log("Armazenamento persistente negado: Cuidado ao limpar o cache.");
+    }
+  });
+}
             loadData();
             
             // Default Card se não existir
@@ -759,4 +769,5 @@
         }
     </script>
 </body>
+
 </html>
