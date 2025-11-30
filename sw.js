@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gestor-idb-v3'; // Mudei de v2 para v3 para forçar atualização
+const CACHE_NAME = 'gestor-firebase-v4';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -6,39 +6,35 @@ const ASSETS_TO_CACHE = [
   './manifest.json',
   'https://cdn.tailwindcss.com',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-  'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap'
+  'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap',
+  'https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js',
+  'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js'
 ];
 
-// Instalação: Baixa os arquivos novos
 self.addEventListener('install', (event) => {
-  self.skipWaiting(); // Força o SW novo a assumir imediatamente
+  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
   );
 });
 
-// Ativação: Limpa caches antigos (v1, v2...)
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keyList) => {
-      return Promise.all(keyList.map((key) => {
-        if (key !== CACHE_NAME) {
-          console.log('Removendo cache antigo:', key);
-          return caches.delete(key);
-        }
-      }));
-    })
+    caches.keys().then((keyList) => Promise.all(keyList.map((key) => {
+      if (key !== CACHE_NAME) return caches.delete(key);
+    })))
   );
-  self.clients.claim(); // Controla a página imediatamente
+  self.clients.claim();
 });
 
-// Interceptação
+// Network First strategy (melhor para apps com dados dinâmicos/firebase)
 self.addEventListener('fetch', (event) => {
+  // Ignora chamadas para a API do Firestore (deixa a lib lidar com isso)
+  if (event.request.url.includes('firestore.googleapis.com')) return;
+
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
-    })
+    fetch(event.request)
+      .catch(() => caches.match(event.request))
   );
 });
